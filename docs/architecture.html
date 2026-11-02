@@ -1,0 +1,461 @@
+<title>System Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: Single-column documentation with inline diagrams */
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --fg: #1a1a2e;
+    --fg-muted: #64748b;
+    --accent: #3b82f6;
+    --accent-soft: #dbeafe;
+    --border: #e2e8f0;
+    --vue-green: #42b883;
+    --python-blue: #3776ab;
+    --data-amber: #f59e0b;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --fg: #f1f5f9;
+      --fg-muted: #94a3b8;
+      --accent: #60a5fa;
+      --accent-soft: #1e3a5f;
+      --border: #334155;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --fg: #f1f5f9;
+    --fg-muted: #94a3b8;
+    --accent: #60a5fa;
+    --accent-soft: #1e3a5f;
+    --border: #334155;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: var(--fg-muted);
+    font-size: 1.1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2.5rem 0 1rem;
+    color: var(--fg);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h2::before {
+    content: '';
+    width: 4px;
+    height: 1.25rem;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .diagram-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  .diagram-container svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .stack-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+  }
+
+  .stack-card h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg-muted);
+    margin: 0 0 0.75rem;
+  }
+
+  .stack-card ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .stack-card li {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .stack-card .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-vue { background: var(--vue-green); }
+  .dot-python { background: var(--python-blue); }
+  .dot-data { background: var(--data-amber); }
+  .dot-tool { background: var(--accent); }
+
+  .endpoints {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  .endpoint {
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    font-size: 0.9rem;
+  }
+
+  .endpoint:last-child {
+    border-bottom: none;
+  }
+
+  .method {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .path {
+    font-family: var(--font-mono);
+    color: var(--fg);
+  }
+
+  .filters {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+  }
+
+  .file-tree {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.8;
+    margin: 1.5rem 0;
+  }
+
+  .file-tree .folder {
+    color: var(--accent);
+  }
+
+  .file-tree .file {
+    color: var(--fg-muted);
+  }
+
+  .file-tree .indent {
+    margin-left: 1.25rem;
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 1.5rem; }
+    .endpoint {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    .method { width: fit-content; }
+  }
+</style>
+
+<h1>Factory Inventory Management</h1>
+<p class="subtitle">Full-stack application with Vue 3 frontend, Python FastAPI backend, and in-memory mock data</p>
+
+<h2>System Architecture</h2>
+<div class="diagram-container">
+  <svg viewBox="0 0 700 320" width="700" height="320">
+    <!-- Frontend Layer -->
+    <rect x="40" y="30" width="200" height="100" rx="8" fill="none" stroke="#42b883" stroke-width="2"/>
+    <text x="140" y="55" text-anchor="middle" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="currentColor">FRONTEND</text>
+    <text x="140" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="currentColor">Vue 3 + Vite</text>
+    <text x="140" y="95" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#64748b">:3000</text>
+    <text x="140" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#64748b">Composition API</text>
+
+    <!-- Backend Layer -->
+    <rect x="300" y="30" width="200" height="100" rx="8" fill="none" stroke="#3776ab" stroke-width="2"/>
+    <text x="400" y="55" text-anchor="middle" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="currentColor">BACKEND</text>
+    <text x="400" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="currentColor">FastAPI + Uvicorn</text>
+    <text x="400" y="95" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#64748b">:8001</text>
+    <text x="400" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#64748b">Pydantic validation</text>
+
+    <!-- Data Layer -->
+    <rect x="560" y="30" width="120" height="100" rx="8" fill="none" stroke="#f59e0b" stroke-width="2"/>
+    <text x="620" y="55" text-anchor="middle" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="currentColor">DATA</text>
+    <text x="620" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="currentColor">JSON Files</text>
+    <text x="620" y="95" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#64748b">In-memory</text>
+    <text x="620" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#64748b">No database</text>
+
+    <!-- Arrows -->
+    <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+      </marker>
+    </defs>
+    <line x1="240" y1="80" x2="295" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="268" y="72" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#64748b">HTTP</text>
+
+    <line x1="500" y1="80" x2="555" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="528" y="72" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#64748b">Load</text>
+
+    <!-- Data Flow Section -->
+    <text x="40" y="175" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="currentColor">Data Flow</text>
+
+    <!-- Flow boxes -->
+    <rect x="40" y="190" width="90" height="50" rx="6" fill="none" stroke="#42b883" stroke-width="1.5"/>
+    <text x="85" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor">Vue View</text>
+    <text x="85" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#64748b">useFilters()</text>
+
+    <rect x="150" y="190" width="90" height="50" rx="6" fill="none" stroke="#42b883" stroke-width="1.5"/>
+    <text x="195" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor">api.js</text>
+    <text x="195" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#64748b">Axios client</text>
+
+    <rect x="260" y="190" width="90" height="50" rx="6" fill="none" stroke="#3776ab" stroke-width="1.5"/>
+    <text x="305" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor">FastAPI</text>
+    <text x="305" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#64748b">Query params</text>
+
+    <rect x="370" y="190" width="90" height="50" rx="6" fill="none" stroke="#3776ab" stroke-width="1.5"/>
+    <text x="415" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor">Filters</text>
+    <text x="415" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#64748b">apply_filters()</text>
+
+    <rect x="480" y="190" width="90" height="50" rx="6" fill="none" stroke="#3776ab" stroke-width="1.5"/>
+    <text x="525" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor">Pydantic</text>
+    <text x="525" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#64748b">Validate</text>
+
+    <rect x="590" y="190" width="90" height="50" rx="6" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="635" y="212" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor">JSON</text>
+    <text x="635" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#64748b">Response</text>
+
+    <!-- Flow arrows -->
+    <line x1="130" y1="215" x2="148" y2="215" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+    <line x1="240" y1="215" x2="258" y2="215" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+    <line x1="350" y1="215" x2="368" y2="215" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+    <line x1="460" y1="215" x2="478" y2="215" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+    <line x1="570" y1="215" x2="588" y2="215" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+
+    <!-- Filter System -->
+    <text x="40" y="280" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="currentColor">Global Filter System</text>
+
+    <rect x="40" y="295" width="100" height="24" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+    <text x="90" y="311" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#1e40af">Time Period</text>
+
+    <rect x="150" y="295" width="100" height="24" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+    <text x="200" y="311" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#1e40af">Warehouse</text>
+
+    <rect x="260" y="295" width="100" height="24" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+    <text x="310" y="311" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#1e40af">Category</text>
+
+    <rect x="370" y="295" width="100" height="24" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+    <text x="420" y="311" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#1e40af">Order Status</text>
+  </svg>
+</div>
+
+<h2>Tech Stack</h2>
+<div class="stack-grid">
+  <div class="stack-card">
+    <h3>Frontend</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Vue 3</li>
+      <li><span class="dot dot-vue"></span>Composition API</li>
+      <li><span class="dot dot-vue"></span>Vue Router 4</li>
+      <li><span class="dot dot-tool"></span>Vite 8</li>
+      <li><span class="dot dot-tool"></span>Axios</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Backend</h3>
+    <ul>
+      <li><span class="dot dot-python"></span>Python 3.13</li>
+      <li><span class="dot dot-python"></span>FastAPI</li>
+      <li><span class="dot dot-python"></span>Pydantic</li>
+      <li><span class="dot dot-python"></span>Uvicorn</li>
+      <li><span class="dot dot-tool"></span>uv</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Data</h3>
+    <ul>
+      <li><span class="dot dot-data"></span>inventory.json</li>
+      <li><span class="dot dot-data"></span>orders.json</li>
+      <li><span class="dot dot-data"></span>spending.json</li>
+      <li><span class="dot dot-data"></span>backlog_items.json</li>
+      <li><span class="dot dot-data"></span>demand_forecasts.json</li>
+    </ul>
+  </div>
+</div>
+
+<h2>API Endpoints</h2>
+<div class="endpoints">
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/inventory</span>
+    <span class="filters">warehouse, category</span>
+  </div>
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/orders</span>
+    <span class="filters">warehouse, category, status, month</span>
+  </div>
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/dashboard/summary</span>
+    <span class="filters">all filters</span>
+  </div>
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/demand</span>
+    <span class="filters">none</span>
+  </div>
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/backlog</span>
+    <span class="filters">none</span>
+  </div>
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/spending/*</span>
+    <span class="filters">summary, monthly, categories</span>
+  </div>
+  <div class="endpoint">
+    <span class="method">GET</span>
+    <span class="path">/api/reports/*</span>
+    <span class="filters">quarterly, monthly-trends</span>
+  </div>
+</div>
+
+<h2>Project Structure</h2>
+<div class="file-tree">
+  <div><span class="folder">inventory-management/</span></div>
+  <div class="indent"><span class="folder">client/</span></div>
+  <div class="indent indent"><span class="folder">src/</span></div>
+  <div class="indent indent indent"><span class="file">api.js</span> — Centralized API client</div>
+  <div class="indent indent indent"><span class="folder">views/</span> — Dashboard, Inventory, Orders, Backlog, Demand, Spending, Reports</div>
+  <div class="indent indent indent"><span class="folder">components/</span> — FilterBar, Modals, ProfileMenu</div>
+  <div class="indent indent indent"><span class="folder">composables/</span> — useFilters, useAuth, useI18n</div>
+  <div class="indent"><span class="folder">server/</span></div>
+  <div class="indent indent"><span class="file">main.py</span> — FastAPI endpoints & Pydantic models</div>
+  <div class="indent indent"><span class="file">mock_data.py</span> — JSON file loader</div>
+  <div class="indent indent"><span class="folder">data/</span> — JSON data files</div>
+  <div class="indent"><span class="folder">tests/</span></div>
+  <div class="indent indent"><span class="folder">backend/</span> — pytest + FastAPI TestClient</div>
+</div>
+
+<h2>Frontend Views</h2>
+<div class="stack-grid">
+  <div class="stack-card">
+    <h3>Dashboard</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Summary KPIs</li>
+      <li><span class="dot dot-vue"></span>Revenue tracking</li>
+      <li><span class="dot dot-vue"></span>Order status</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Inventory</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Stock levels</li>
+      <li><span class="dot dot-vue"></span>Reorder alerts</li>
+      <li><span class="dot dot-vue"></span>Location tracking</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Orders</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Order list</li>
+      <li><span class="dot dot-vue"></span>Status filtering</li>
+      <li><span class="dot dot-vue"></span>Customer details</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Backlog</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Delayed items</li>
+      <li><span class="dot dot-vue"></span>Priority levels</li>
+      <li><span class="dot dot-vue"></span>Purchase orders</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Demand</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Forecasts</li>
+      <li><span class="dot dot-vue"></span>Trend analysis</li>
+      <li><span class="dot dot-vue"></span>SKU tracking</li>
+    </ul>
+  </div>
+  <div class="stack-card">
+    <h3>Spending</h3>
+    <ul>
+      <li><span class="dot dot-vue"></span>Cost breakdown</li>
+      <li><span class="dot dot-vue"></span>Monthly trends</li>
+      <li><span class="dot dot-vue"></span>Transactions</li>
+    </ul>
+  </div>
+</div>

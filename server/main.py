@@ -120,6 +120,18 @@ class CreatePurchaseOrderRequest(BaseModel):
     expected_delivery_date: str
     notes: Optional[str] = None
 
+class RestockingItem(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_cost: float
+    subtotal: float
+
+class CreateRestockingOrderRequest(BaseModel):
+    budget: float
+    items: List[RestockingItem]
+    total_value: float
+
 # API endpoints
 @app.get("/")
 def root():
@@ -303,6 +315,79 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+@app.get("/api/restocking/recommendations")
+def get_restocking_recommendations(budget: float = 10000):
+    """Get recommended items for restocking based on demand forecasts and budget.
+
+    Joins demand forecasts with inventory to get unit costs, then sorts by
+    forecasted_demand descending (highest demand items prioritized first).
+    """
+    # Build SKU -> unit_cost lookup from inventory
+    sku_to_cost = {item['sku']: item['unit_cost'] for item in inventory_items}
+
+    # Enrich forecasts with unit_cost from inventory
+    enriched = []
+    for forecast in demand_forecasts:
+        cost = sku_to_cost.get(forecast['item_sku'])
+        if cost:
+            max_affordable = int(budget / cost) if cost > 0 else 0
+            enriched.append({
+                **forecast,
+                'unit_cost': cost,
+                'recommended_quantity': min(forecast['forecasted_demand'], max_affordable)
+            })
+
+    # Sort by forecasted_demand DESC (highest demand first)
+    enriched.sort(key=lambda x: x['forecasted_demand'], reverse=True)
+
+    return enriched
+
+@app.post("/api/restocking-orders")
+def create_restocking_order(request: CreateRestockingOrderRequest):
+    """Create a new restocking order from selected items."""
+    import datetime
+
+    # Generate order ID and number
+    new_id = str(len(orders) + 100)  # Offset to avoid collisions
+    order_number = f"RST-{datetime.datetime.now().strftime('%Y')}-{str(len(orders) + 1).zfill(4)}"
+
+    order_date = datetime.datetime.now().isoformat()
+    # 10 business day lead time for restocking orders
+    expected_delivery = (datetime.datetime.now() + datetime.timedelta(days=10)).isoformat()
+
+    new_order = {
+        'id': new_id,
+        'order_number': order_number,
+        'customer': 'Internal Restocking',
+        'items': [
+            {
+                'sku': item.item_sku,
+                'name': item.item_name,
+                'quantity': item.quantity,
+                'unit_price': item.unit_cost
+            } for item in request.items
+        ],
+        'status': 'Submitted',
+        'warehouse': 'San Francisco',
+        'category': 'Restocking',
+        'order_date': order_date,
+        'expected_delivery': expected_delivery,
+        'total_value': request.total_value
+    }
+
+    # Add to in-memory orders list
+    orders.append(new_order)
+
+    return {
+        'id': new_id,
+        'order_number': order_number,
+        'status': 'Submitted',
+        'order_date': order_date,
+        'expected_delivery': expected_delivery,
+        'total_value': request.total_value,
+        'items_count': len(request.items)
+    }
 
 if __name__ == "__main__":
     import uvicorn
