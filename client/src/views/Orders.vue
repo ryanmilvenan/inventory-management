@@ -25,6 +25,10 @@
           <div class="stat-label">{{ t('status.backordered') }}</div>
           <div class="stat-value">{{ getOrdersByStatus('Backordered').length }}</div>
         </div>
+        <div class="stat-card submitted">
+          <div class="stat-label">{{ t('status.submitted') }}</div>
+          <div class="stat-value">{{ getOrdersByStatus('Submitted').length }}</div>
+        </div>
       </div>
 
       <div class="card">
@@ -138,7 +142,8 @@ export default {
         'Delivered': 'success',
         'Shipped': 'info',
         'Processing': 'warning',
-        'Backordered': 'danger'
+        'Backordered': 'danger',
+        'Submitted': 'submitted'
       }
       return statusMap[status] || 'info'
     }
@@ -275,5 +280,15 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+/* Submitted status styling */
+.stat-card.submitted {
+  border-left: 4px solid #8b5cf6;
+}
+
+.badge.submitted {
+  background: #ede9fe;
+  color: #7c3aed;
 }
 </style>
